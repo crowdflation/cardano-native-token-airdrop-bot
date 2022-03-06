@@ -1,0 +1,30 @@
+{
+  "name": "cardano-native-token-airdrop-bot",
+  "version": "0.0.1",
+  "description": "Send Cardano custom tokens to participants in your discord",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crowdflation/cardano-native-token-airdrop-bot.git"
+  },
+  "keywords": [
+    "cardano",
+    "native",
+    "tokens",
+    "discord"
+  ],
+  "author": "Crowdflation Inc",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crowdflation/cardano-native-token-airdrop-bot/issues"
+  },
+  "homepage": "https://github.com/crowdflation/cardano-native-token-airdrop-bot#readme",
+  "dependencies": {
+    "discord.js": "^13.6.0",
+    "mongodb": "^4.1.0"
+  }
+}
