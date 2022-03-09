@@ -125,7 +125,7 @@ client.on('messageReactionAdd', async function(messageReaction, user) {
                 });
 
 
-            messageReaction?.message.reply(`Congrats on getting a reward of ${rewardAmount} ${userName} for someone CRWD'ing your message! To see balance, do a !bal commend`);
+            messageReaction?.message.reply(`Congrats on getting a reward of ${rewardAmount} ${userName} for someone CRWD'ing your message! To see balance, do a !bal command`);
             console.log('Give reward', userId, messageReaction?.message?.author?.id, messageReaction?.message);
         } else {
             console.log('No reward self');
