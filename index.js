@@ -1,7 +1,7 @@
 import Discord from "discord.js";
 import config from "./config.js";
 import {connectToDatabase} from "./mongodb.js";
-
+import WAValidator from 'multicoin-address-validator';
 
 const client = new Discord.Client({intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MESSAGE_REACTIONS"], partials: ['MESSAGE', 'CHANNEL', 'REACTION']});
 
@@ -15,8 +15,16 @@ const collectionMessagesForRewards  = "_rewards_messages";
 const collectionUsersRewards  = "_rewards_users";
 const collectionTokensBalance  = "_rewards_tokens";
 
+
+function balance(userStatus) {
+    if(!userStatus || !userStatus.balance) {
+        return 0;
+    }
+    return userStatus.balance.toFixed(2);
+}
+
 client.on("messageCreate", async function(message) {
-    console.log('aa');
+    console.log('message detected');
     if (message.author.bot) return;
     if (!message.content.startsWith(prefix)) return;
 
@@ -24,9 +32,48 @@ client.on("messageCreate", async function(message) {
     const args = commandBody.split(' ');
     const command = args.shift().toLowerCase();
 
-    if (command === "ping") {
-        const timeTaken = Date.now() - message.createdTimestamp;
-        message.reply(`Pong! This message had a latency of ${timeTaken}ms.`);
+    if (command === "help") {
+        message.reply(`!wallet to set a wallet address, !withdraw to withdraw, !bal to see balance`);
+        return;
+    }
+
+    if (command === "wallet") {
+        const userId = message?.author?.id;
+        if(!userId) {
+            console.log('No user id');
+            return;
+        }
+        const { db }  = await connectToDatabase();
+        const findUser = await db.collection(collectionUsersRewards).find({userId}).toArray();
+
+        if(findUser.length>1) {
+            console.error('More than one user record!');
+            message.reply(`Error: More than one user record in database!`);
+            return;
+        }
+
+        const address = args.shift();
+        let valid = false;
+        try {
+            valid = WAValidator.validate(address, 'cardano', 'prod');
+        } catch (e) {
+            console.error('Error validating address', e);
+        }
+        if(!valid) {
+            console.error('Address format is not valid for Cardano');
+            message.reply(`Address format is not valid for Cardano`);
+            return;
+        }
+
+        await db.collection(collectionUsersRewards).updateOne(
+            { userId },
+            { $set: {wallet: address, name: message?.author?.username}},
+            {
+                upsert: true
+            });
+
+        message.reply(`Wallet address for ${message?.author?.username} set successfully to ${address}`);
+        return;
     }
 
     if(command ==="bal") {
@@ -43,7 +90,7 @@ client.on("messageCreate", async function(message) {
             return;
         }
 
-        message.reply(`User ${message?.author?.username}, your balance is ${userStatus.balance || 0} CRWD.`);
+        message.reply(`User ${message?.author?.username}, your balance is ${balance(userStatus)} CRWD.`);
     }
 });
 
@@ -88,7 +135,7 @@ client.on('messageReactionAdd', async function(messageReaction, user) {
             const userName = messageReaction?.message?.author?.username;
 
             if(!userId || !userName) {
-                console.log('Missong ids', messageReaction?.message?.author);
+                console.log('Missing ids', messageReaction?.message?.author);
                 return;
             }
 
@@ -97,6 +144,7 @@ client.on('messageReactionAdd', async function(messageReaction, user) {
             const findUser = await db.collection(collectionUsersRewards).find({userId}).toArray();
 
             if(findUser.length>1) {
+                console.error('More than one user record!');
                 throw new Error("More than one user record!");
             }
 
@@ -118,17 +166,16 @@ client.on('messageReactionAdd', async function(messageReaction, user) {
                 });
 
             await db.collection(collectionUsersRewards).updateOne(
-                { userId},
-                { $inc: {balance: rewardAmount,  rewards: 1}},
+                { userId },
+                { $inc: {balance: rewardAmount,  rewards: 1}, $set: {name: userName}},
                 {
                     upsert: true
                 });
 
-
-            messageReaction?.message.reply(`Congrats on getting a reward of ${rewardAmount} ${userName} for someone CRWD'ing your message! To see balance, do a !bal command`);
+            messageReaction?.message.reply(`Congrats on getting a reward of ${rewardAmount.toFixed(2)} ${userName} for someone CRWD'ing your message! To see balance, do a !bal command, for other commands do !help`);
             console.log('Give reward', userId, messageReaction?.message?.author?.id, messageReaction?.message);
         } else {
-            console.log('No reward self');
+            console.log('Cannot  reward self');
         }
     }
 });

@@ -25,6 +25,7 @@
   "homepage": "https://github.com/crowdflation/cardano-native-token-airdrop-bot#readme",
   "dependencies": {
     "discord.js": "^13.6.0",
-    "mongodb": "^4.1.0"
+    "mongodb": "^4.1.0",
+    "multicoin-address-validator": "^0.5.8"
   }
 }
