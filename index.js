@@ -33,7 +33,12 @@ client.on("messageCreate", async function(message) {
     const command = args.shift().toLowerCase();
 
     if (command === "help") {
-        message.reply(`!wallet to set a wallet address, !withdraw to withdraw, !bal to see balance`);
+        message.reply(`!wallet to set a wallet address, !withdraw to withdraw (not implemented yet), !bal to see balance`);
+        return;
+    }
+
+    if (command === "withdraw") {
+        message.reply(`This command is not yet implemented`);
         return;
     }
 
@@ -90,7 +95,11 @@ client.on("messageCreate", async function(message) {
             return;
         }
 
-        message.reply(`User ${message?.author?.username}, your balance is ${balance(userStatus)} CRWD.`);
+        const balanceRecord = await db.collection(collectionTokensBalance).findOne();
+
+        const {rewardAmount, currentBalance} = calculateReward(balanceRecord?.balance, balanceRecord?.iteration);
+
+        message.reply(`User ${message?.author?.username}, your balance is ${balance(userStatus)} CRWD. Total remaining rewards: ${currentBalance.toFixed(2)}, next reward will be ${rewardAmount.toFixed(2)}`);
     }
 });
 
@@ -106,36 +115,46 @@ const calculateReward = function(balance, iteration) {
     const currentBalance = balance || maxBalance;
     const retainAmount = currentBalance * retainMultiplier* Math.pow(increaseRetain, iteration);
     console.log('calculateReward',balance, iteration,currentBalance, retainAmount );
-    return {rewardAmount: currentBalance-retainAmount};
+    return {rewardAmount: currentBalance-retainAmount, currentBalance};
 };
 
 client.on('messageReactionAdd', async function(messageReaction, user) {
     if(messageReaction._emoji.id==="904687547584749568") {
-        if(!messageReaction?.message?.author?.id || !user?.id || !messageReaction?.message?.id) {
-            console.log('No ids', messageReaction?.message,  messageReaction?.message?.author, messageReaction?.message?.author?.id, user?.id, messageReaction?.message?.id);
+        console.log('result', JSON.stringify(messageReaction));
+
+        let message = messageReaction?.message;
+
+        if(!message?.author?.id) {
+            const channel = await client.channels.fetch(messageReaction?.message?.channelId);
+            const messages = await channel.messages.fetch({around:messageReaction?.messageId, limit: 1});
+            message = messages.first();
+        }
+
+        if(!message?.author?.id || !user?.id || !message?.id) {
+            console.log('No ids', message,  message?.author, message?.author?.id, user?.id, message?.id);
             return;
         }
 
-        if (messageReaction?.message?.author?.bot) {
+        if (message?.author?.bot) {
             console.log('Author is bot');
             return;
         }
 
-        if(user?.id !==messageReaction?.message?.author?.id) {
+        if(user?.id !==message?.author?.id) {
             const { db}  = await connectToDatabase();
             console.log('db', db);
-            const messageLog = {userId: user?.id, messageId: messageReaction?.message?.id };
+            const messageLog = {userId: user?.id, messageId: message?.id };
             let reward = await db.collection(collectionMessagesForRewards).findOne(messageLog);
             if(reward) {
                 console.log('Already rewarded');
                 return;
             }
 
-            const userId = messageReaction?.message?.author?.id;
-            const userName = messageReaction?.message?.author?.username;
+            const userId = message?.author?.id;
+            const userName = message?.author?.username;
 
             if(!userId || !userName) {
-                console.log('Missing ids', messageReaction?.message?.author);
+                console.log('Missing ids', message?.author);
                 return;
             }
 
@@ -172,8 +191,8 @@ client.on('messageReactionAdd', async function(messageReaction, user) {
                     upsert: true
                 });
 
-            messageReaction?.message.reply(`Congrats on getting a reward of ${rewardAmount.toFixed(2)} ${userName} for someone CRWD'ing your message! To see balance, do a !bal command, for other commands do !help`);
-            console.log('Give reward', userId, messageReaction?.message?.author?.id, messageReaction?.message);
+            message.reply(`Congrats on getting a reward of ${rewardAmount.toFixed(2)} ${userName} for someone CRWD'ing your message! To see balance, do a !bal command, for other commands do !help`);
+            console.log('Give reward', userId, message?.author?.id, message);
         } else {
             console.log('Cannot  reward self');
         }
