@@ -126,7 +126,7 @@ client.on('messageReactionAdd', async function(messageReaction, user) {
 
         if(!message?.author?.id) {
             const channel = await client.channels.fetch(messageReaction?.message?.channelId);
-            const messages = await channel.messages.fetch({around:messageReaction?.messageId, limit: 1});
+            const messages = await channel.messages.fetch({around:messageReaction?.message?.id, limit: 1});
             message = messages.first();
         }
 
@@ -136,7 +136,7 @@ client.on('messageReactionAdd', async function(messageReaction, user) {
         }
 
         if (message?.author?.bot) {
-            console.log('Author is bot');
+            console.log('Author is bot', message?.author, message);
             return;
         }
 
